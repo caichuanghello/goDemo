@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    *{
+        margin: 0;
+        padding: 0;
+    }
+    body
+    {
+        margin:0;
+        padding: 0;
+        font-family: sans-serif;
+        background: url("/static/img/gb.jpg");
+        background-size: cover;
+    }
+    .wrap{
+        display: flex;
+        height: 500px;
+        width: 60%;
+        margin-left: 20%;
+        margin-top:100px ;
+    }
+    .lf{
+        height: 100%;
+        width: 240px;
+        overflow-y: auto;
+        background: #423F41;
+        background: rgba(0,0,0,.7);
+    }
+    .lf::-webkit-scrollbar { width: 0 !important }
+    .rig_top{
+        height: 70%;
+        width: 660px;
+        overflow-y: auto;
+        background: rgba(255,255,255,.2);
+    }
+    .rig_btm{
+        height: 30%;
+        width: 660px;
+        position: relative;
+    }
+    .rig_btm textarea{
+        width: 100%;
+        height: 100%;
+        font-size: 16px;
+        outline: none;
+        border: 0;
+        resize:none;
+        padding: 10px;
+        box-sizing: border-box;
+        background: rgba(255,255,255,.7);
+    }
+    .btn{
+        position: absolute;
+        bottom: 10px;
+        right: 30px;
+        background: #12B7F9;
+        color: #fff;
+        padding: 5px 20px;
+        border-radius: 5px;
+        cursor:pointer;
+    }
+    .lis{
+        display: flex;
+        font-size: 14px;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        background: #423F41;
+        color: #fff;
+    }
+
+    .lis:hover{
+        background: #484A4E;
+    }
+    .lis img{
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #ccc;
+        margin-right: 10px;
+    }
+    .lis_lf{
+        display: flex;
+    }
+    .maxwid{
+        width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .num{
+        display: inline-block;
+        height: 16px;
+        line-height: 16px;
+        color: #fff;
+        background: green;
+        border-radius: 8px;
+        padding: 0 5px;
+        font-size: 8px;
+    }
+
+    .headerImg{
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .noticmsg{
+        color:rebeccapurple;
+        font-size: 15px;
+        font-family: Georgia, serif;
+    }
+
+    .quitmsg{
+        color:red;
+        font-size: 15px;
+        font-family: Georgia, serif;
+    }
+
+</style>
+<body>
+<div class="wrap">
+    <div class="lf">
+    </div>
+    <div class="rig">
+        <div class="rig_top">
+{{/*            聊天主内容*/}}
+
+        </div>
+
+        <div class="rig_btm">
+            <textarea id="tarea" placeholder="请输入内容"></textarea>
+            <div class="btn">发送</div>
+        </div>
+    </div>
+</div>
+</body>
+
+</html>
+
+<script>
+    window.onload = function () {
+
+        //进来的时候就先获取在线用户
+        var lf = document.querySelector('.lf')
+        var msgtest = document.querySelector('.rig_top')
+        var btn = document.querySelector('.btn')
+        var txt = document.querySelector('#tarea')
+        var arr = []
+
+        //获取在线用户,返回
+        getUser("/getOnlineUser",function(res){
+            var str = ""
+            res.forEach(item=>{
+                arr.push(item)
+                str+=`
+                      <div class="lis" id=${item.Addr}>
+                        <div class="lis_lf">
+                          <img src=${item.Header} alt="">
+                          <div>
+                            <div class="maxwid">${item.Name}</div>
+                            <div class="maxwid">${item.Msg.Message}</div>
+                          </div>
+                        </div>
+                        <div>
+                          <div>${item.Addtime}</div>
+                          <div><span class="num">1</span></div>
+                        </div>
+                      </div>`
+            })
+            lf.innerHTML += str
+        })
+
+        ws = new WebSocket("ws://192.168.1.30:8080/ws");
+        ws.onopen = function(evt) {
+            console.log("连接websocket成功:监听启动");
+        }
+        ws.onclose = function(evt) {
+            console.log("CLOSE");
+            ws = null;
+        }
+        ws.onmessage = function(evt) {
+
+            //写入到div中
+            console.log(evt.data)
+            var data = JSON.parse(evt.data)
+            //表示有新的用户进入聊天室
+            if(data.Msg.MsgType == 3) {
+                arr.push(data)
+                var str = ''
+                var strr = ''
+                //获取在线用户,返回
+                str+=`
+                  <div class="lis">
+                    <div class="lis_lf">
+                      <img src=${data.Header} alt="">
+                      <div>
+                        <div class="maxwid">${data.Name}</div>
+                        <div class="maxwid">${data.Msg.Message}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div>${data.Addtime}</div>
+                      <div><span class="num">1</span></div>
+                    </div>
+                  </div>`
+                lf.innerHTML += str
+
+                //聊天框提示
+                strr+=` <div style="overflow: hidden;padding-top: 10px" >
+                        <div>
+                            <div style="display: flex;justify-content: center;">
+                                <span  class="noticmsg" style="margin-right: 10px;text-align: right">${data.Name} 进入聊天室</span>
+                            </div>
+                        </div>
+                    </div>`
+
+                msgtest.innerHTML +=strr
+            }
+
+            //表示用户退出
+            if(data.Msg.MsgType == 4) {
+                var str = ''
+                var addr = data.Addr
+                var strr = ''
+                //获取当前所有的dom数据,
+                var resdata = arr.filter(item=>item.Addr!=addr)
+                lf.innerHTML = ''
+                resdata.forEach(item=>{
+                    str+=`
+                      <div class="lis" id=${item.Addr}>
+                        <div class="lis_lf">
+                          <img src=${item.Header} alt="">
+                          <div>
+                            <div class="maxwid">${item.Name}</div>
+                            <div class="maxwid">${item.Msg.Message}</div>
+                          </div>
+                        </div>
+                        <div>
+                           <div>${item.Addtime}</div>
+                          <div><span class="num">1</span></div>
+                        </div>
+                      </div>`
+                })
+                lf.innerHTML = str
+
+                //聊天框提示
+                strr+=` <div style="overflow: hidden;padding-top: 10px" >
+                        <div>
+                            <div style="display: flex;justify-content: center;">
+                                <span  class="quitmsg" style="margin-right: 10px;text-align: right">${data.Name} 退出聊天室</span>
+                            </div>
+                        </div>
+                    </div>`
+
+                msgtest.innerHTML +=strr
+            }
+
+            //表示数据接收消息
+            if(data.Msg.MsgType == 1) {
+                var str = ""
+                str +=`<div style="overflow: hidden;margin-top: 10px;margin-left: 5px">
+                    <div style="float: left">
+                        <div style="display: flex;justify-content: center;align-items: center">
+                            <img src=${data.Header} alt="" class="headerImg">
+                            <span  style="margin-left: 10px">${data.Msg.Message}</span>
+                        </div>
+                    </div>
+                </div>`
+
+                msgtest.innerHTML +=str
+
+            }
+        }
+        ws.onerror = function(evt) {
+            console.log("ERROR: " + evt.data);
+        }
+
+
+        btn.onclick = function () { //发送按钮
+            var str = "";
+            var msg = txt.value;
+
+            if (msg == "") {
+                return
+            }
+            var imgscr = `https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fup.enterdesk.com%2Fedpic%2F1f%2F4f%2F53%2F1f4f53402015d7c738e68e7fdfa4877c.jpg&refer=http%3A%2F%2Fup.enterdesk.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1642747692&t=e781066e6d8da342c8b59ee8198fb8f9`
+            str +=`<div style="overflow: hidden;padding-bottom: 10px;margin-right: 5px" >
+                        <div style="float: right">
+                            <div style="display: flex;justify-content: center;align-items: center">
+                                <span  style="margin-right: 10px;width: 500px;text-align: right">${msg}</span>
+                                <img src=${imgscr} alt="试试水" class="headerImg">
+                            </div>
+                        </div>
+                    </div>`
+            msgtest.innerHTML +=str
+            //发送数据给服务器
+            ws.send(msg)
+
+            //清空输入的内容
+            txt.value = ""
+        }
+
+
+
+        document.getElementById("tarea").addEventListener("keyup", function(event) {
+            event.preventDefault();
+            if (event.keyCode === 13) {
+                document.getElementsByClassName("btn")[0].click();
+            }
+        });
+
+    }
+
+    function getUser(url,cb){
+
+        var httpRequest = new XMLHttpRequest();//第一步：建立所需的对象
+        httpRequest.open('GET', url, true);//第二步：打开连接  将请求参数写在url中  ps:"./Ptest.php?name=test&nameone=testone"
+        httpRequest.send();//第三步：发送请求  将请求参数写在URL中
+        httpRequest.onreadystatechange = function () {
+            if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+                var json = httpRequest.responseText;//获取到json字符串，还需解析
+                cb(JSON.parse(json))
+            }
+        };
+
+
+
+    }
+
+
+
+
+</script>
