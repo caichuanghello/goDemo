@@ -14,6 +14,8 @@ import (
 type UserController struct {
 
 }
+
+var syn sync.Mutex
 const (
 	// SystemMessage 系统消息
 	SystemMessage = iota
@@ -36,32 +38,54 @@ func init(){
 			case client:=<-SendMsgChannel:
 
 				if client.Msg.MsgType == ConnectedMessage{
-					for _,v:=range onLineMap{
-						client.Msg.Message ="进入聊天室"
-						re,_:=json.Marshal(client)
+					onLineMapp.Range(func(key, value interface{}) bool {
+						v :=value.(*Client)
+						v.Msg.Message = "进入聊天室"
+						re,_:=json.Marshal(v)
 						v.Conn.WriteMessage(1,re)
-					}
+						return true
+					})
 				} else if client.Msg.MsgType == BroadcastMessage{
-					for _,v:=range onLineMap{
+
+					onLineMapp.Range(func(key, value interface{}) bool {
+						v :=value.(*Client)
 						re,_:=json.Marshal(client)
 						if v != client {
 							v.Conn.WriteMessage(1,re)
 						}
-					}
+						return true
+					})
+
+					//for _,v:=range onLineMap{
+					//	re,_:=json.Marshal(client)
+					//	if v != client {
+					//		v.Conn.WriteMessage(1,re)
+					//	}
+					//}
 				} else if client.Msg.MsgType == DisconnectedMessage{
 					re,_:=json.Marshal(client)
-					for _,v:=range onLineMap{
+					onLineMapp.Range(func(key, value interface{}) bool {
+						v :=value.(*Client)
 						if v != client {
 							v.Conn.WriteMessage(1,re)
 						}
-					}
+						return true
+					})
 					//关闭连接
 					client.Conn.Close()
-					var wg sync.WaitGroup
-					wg.Add(1)
-					//删除map中的数据
-					delete(onLineMap,client.Addr)
-					wg.Done()
+					onLineMapp.Delete(client.Addr)
+					fmt.Println("用户退出",onLineMapp)
+					//for _,v:=range onLineMap{
+					//	if v != client {
+					//		v.Conn.WriteMessage(1,re)
+					//	}
+					//}
+					////关闭连接
+					//client.Conn.Close()
+					//syn.Lock()
+					////删除map中的数据
+					//delete(onLineMap,client.Addr)
+					//syn.Unlock()
 				}
 			//case <-time.After(10*time.Second):
 			//	//主动断开
@@ -81,6 +105,7 @@ var upGrader = websocket.Upgrader{
 }
 
 //定义全局在线用户
+var onLineMapp sync.Map
 var onLineMap = make(map[string]*Client)
 
 //定义全局的消息推送channel
@@ -114,35 +139,43 @@ func (UserController)Ws(c *gin.Context){
 		return
 	}
 	defer  ws.Close()
-
 	//第一步,首先把该用户加入到在线列表中
 	remoteAddr := ws.RemoteAddr().String()
 	//name是 "用户-端口"
 	strsli:=strings.Split(remoteAddr,":")
 	name :="用户"+strsli[1]
-	onLineMap[remoteAddr] = &Client{
+
+	//新用户信息构建
+	user := &Client{
 		Name: name,
 		Addr:remoteAddr,
 		Conn: ws,
 		Header: "https://tse1-mm.cn.bing.net/th/id/R-C.efdb268bb841fb60073dbae826bf2b9f?rik=Ufo6V0eAyp3IkQ&riu=http%3a%2f%2fscimg.jianbihuadq.com%2f202009%2f202009162308095.jpg&ehk=thgEdzkXNa5AqjDy3cJ5aAHwMPSGcbOS7CKvuxvNo3w%3d&risl=&pid=ImgRaw&r=0&sres=1&sresct=1",
 		Addtime: time.Now().Format("15:04"),
+		Msg: message{MsgType: ConnectedMessage},
 	}
+
+	//onLineMap[remoteAddr] = user
+	//新增
+	onLineMapp.Store(remoteAddr,user)
+	fmt.Println("所有用户",onLineMapp)
 	//通知其他用户上线消息
-	onLineMap[remoteAddr].Msg = message{MsgType: ConnectedMessage}
-	SendMsgChannel<-onLineMap[remoteAddr]
+	SendMsgChannel<-user
+
 	for {
-		_,p,err:=ws.ReadMessage()
+
+		_,p,err:=ws.ReadMessage() //这里是阻塞的
+
+		val,_:=onLineMapp.Load(remoteAddr)
 		//用户退出
 		if err != nil {
-			fmt.Println("用户退出!")
-			onLineMap[remoteAddr].Msg = message{MsgType: DisconnectedMessage}
-			SendMsgChannel<-onLineMap[remoteAddr]
+			val.(*Client).Msg = message{MsgType: DisconnectedMessage}
+			SendMsgChannel<-val.(*Client)
 			return
 		}
-
 		//群发用户发送的信息
-		onLineMap[remoteAddr].Msg = message{MsgType: BroadcastMessage,Message:string(p)}
-		SendMsgChannel<-onLineMap[remoteAddr]
+		val.(*Client).Msg = message{MsgType: BroadcastMessage,Message:string(p)}
+		SendMsgChannel<-val.(*Client)
 		if err != nil {
 			fmt.Println("socket写入失败:",err)
 			break
@@ -156,11 +189,11 @@ func (UserController)Ws(c *gin.Context){
 
 //获取当前已在线用户
 func  (UserController)GetOnlineUser(c *gin.Context){
-
 	var onLineSlice []*Client
-	for _,v := range onLineMap{
-		onLineSlice = append(onLineSlice,v)
-	}
+	onLineMapp.Range(func(key, value interface{}) bool {
+		onLineSlice = append(onLineSlice,value.(*Client))
+		return true
+	})
 
 	if len(onLineSlice) ==0 {
 		c.JSON(200, []struct {
@@ -170,6 +203,7 @@ func  (UserController)GetOnlineUser(c *gin.Context){
 		c.JSON(200,onLineSlice)
 
 	}
+	fmt.Println("在线用户",onLineMapp)
 	return
 }
 

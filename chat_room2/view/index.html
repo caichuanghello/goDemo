@@ -16,7 +16,7 @@
         margin:0;
         padding: 0;
         font-family: sans-serif;
-        background: url("/static/img/gb.jpg");
+        background: url("/static/img/bg.jpg");
         background-size: cover;
     }
     .wrap{
@@ -155,13 +155,14 @@
         var btn = document.querySelector('.btn')
         var txt = document.querySelector('#tarea')
         var arr = []
-
-        //获取在线用户,返回
-        getUser("/getOnlineUser",function(res){
-            var str = ""
-            res.forEach(item=>{
-                arr.push(item)
-                str+=`
+        ws = new WebSocket("ws://127.0.0.1:8080/ws");
+        ws.onopen = function(evt) {
+            //获取在线用户,渲染到用户列表中
+            getUser("/getOnlineUser",function(res){
+                var str = ""
+                res.forEach(item=>{
+                    arr.push(item)
+                    str+=`
                       <div class="lis" id=${item.Addr}>
                         <div class="lis_lf">
                           <img src=${item.Header} alt="">
@@ -175,45 +176,22 @@
                           <div><span class="num">1</span></div>
                         </div>
                       </div>`
+                })
+                lf.innerHTML += str
             })
-            lf.innerHTML += str
-        })
-
-        ws = new WebSocket("ws://192.168.1.30:8080/ws");
-        ws.onopen = function(evt) {
-            console.log("连接websocket成功:监听启动");
+            // console.log("连接websocket成功:监听启动");
         }
         ws.onclose = function(evt) {
             console.log("CLOSE");
             ws = null;
         }
         ws.onmessage = function(evt) {
-
             //写入到div中
-            console.log(evt.data)
             var data = JSON.parse(evt.data)
             //表示有新的用户进入聊天室
             if(data.Msg.MsgType == 3) {
                 arr.push(data)
-                var str = ''
                 var strr = ''
-                //获取在线用户,返回
-                str+=`
-                  <div class="lis">
-                    <div class="lis_lf">
-                      <img src=${data.Header} alt="">
-                      <div>
-                        <div class="maxwid">${data.Name}</div>
-                        <div class="maxwid">${data.Msg.Message}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <div>${data.Addtime}</div>
-                      <div><span class="num">1</span></div>
-                    </div>
-                  </div>`
-                lf.innerHTML += str
-
                 //聊天框提示
                 strr+=` <div style="overflow: hidden;padding-top: 10px" >
                         <div>
@@ -222,7 +200,6 @@
                             </div>
                         </div>
                     </div>`
-
                 msgtest.innerHTML +=strr
             }
 
@@ -231,8 +208,17 @@
                 var str = ''
                 var addr = data.Addr
                 var strr = ''
+                var arrcopy = arr
                 //获取当前所有的dom数据,
-                var resdata = arr.filter(item=>item.Addr!=addr)
+                //从arr中删除特定的元素
+                for ( var i=0 ; i < arrcopy.length ; ++i ){
+                    if ( arr[i] == data ){
+                        console.log("del")
+                        delete arrcopy[i]
+                    }
+                }
+
+                var resdata = arrcopy.filter(item=>item.Addr!=addr)
                 lf.innerHTML = ''
                 resdata.forEach(item=>{
                     str+=`
@@ -262,6 +248,8 @@
                     </div>`
 
                 msgtest.innerHTML +=strr
+
+
             }
 
             //表示数据接收消息
@@ -292,7 +280,7 @@
             if (msg == "") {
                 return
             }
-            var imgscr = `https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fup.enterdesk.com%2Fedpic%2F1f%2F4f%2F53%2F1f4f53402015d7c738e68e7fdfa4877c.jpg&refer=http%3A%2F%2Fup.enterdesk.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1642747692&t=e781066e6d8da342c8b59ee8198fb8f9`
+            var imgscr = "https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fup.enterdesk.com%2Fedpic%2F1f%2F4f%2F53%2F1f4f53402015d7c738e68e7fdfa4877c.jpg&refer=http%3A%2F%2Fup.enterdesk.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1642747692&t=e781066e6d8da342c8b59ee8198fb8f9";
             str +=`<div style="overflow: hidden;padding-bottom: 10px;margin-right: 5px" >
                         <div style="float: right">
                             <div style="display: flex;justify-content: center;align-items: center">
