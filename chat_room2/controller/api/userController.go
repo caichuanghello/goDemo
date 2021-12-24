@@ -156,7 +156,7 @@ func (UserController)Ws(c *gin.Context){
 
 //获取当前已在线用户
 func  (UserController)GetOnlineUser(c *gin.Context){
-
+	c.Header("Access-Control-Allow-Origin", "*")
 	var onLineSlice []*Client
 	for _,v := range onLineMap{
 		onLineSlice = append(onLineSlice,v)
