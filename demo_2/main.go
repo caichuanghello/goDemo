@@ -2,38 +2,30 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
 )
 
 func main(){
-	lis,err:=net.Listen("tcp",":9000")
-	if err !=nil {
-		panic(err)
-	}
-	defer lis.Close()
-	for {
-		conn,err:=lis.Accept()
-		if err !=nil{
-			fmt.Println("accept error:",err)
+
+	var s = 10
+	for i:=0;i<20;i++ {
+		if i==s {
+			for j:=0;j<5;j++ {
+				if j==2 {
+					fmt.Println("j==2")
+					break
+				}
+				fmt.Println(j)
+			}
+			fmt.Println("end..")
+			break
 		}
-		go handFun(conn)
 	}
+	fmt.Println("运行这了..")
+
 }
 
 
 func handFun(conn net.Conn){
-	defer conn.Close()
-	buf :=make([]byte,1024)
-	for {
-		n,err:=conn.Read(buf)
-		if err != nil || err != io.EOF{
-			fmt.Println("conn read error :",err)
-			return
-		}
-		if n==0{
-			return
-		}
-		fmt.Println(string(buf[:n]))
-	}
+
 }
