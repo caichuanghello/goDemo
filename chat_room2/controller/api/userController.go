@@ -15,16 +15,15 @@ type UserController struct {
 
 }
 const (
-	// SystemMessage 系统消息
-	SystemMessage = iota
-	// BroadcastMessage 广播消息(正常的消息)
-	BroadcastMessage
-	// HeartBeatMessage 心跳消息
-	HeartBeatMessage
+	SystemMessage = iota //系统消息
+
+	BroadcastMessage //广播消息(正常的消息)
+
+	HeartBeatMessage //心跳消息
 
 	ConnectedMessage 	// 上线通知
-	// DisconnectedMessage 下线通知
-	DisconnectedMessage
+
+	DisconnectedMessage //下线通知
 )
 
 //
@@ -34,23 +33,19 @@ func init(){
 		for {
 			select {
 			case client:=<-SendMsgChannel:
-				re,_:=json.Marshal(client)
+
 				if client.Msg.MsgType == ConnectedMessage{
 
 					onLineMapSafe.Range(func(k, value interface{}) bool {
 						v := value.(*Client)
 						client.Msg.Message ="进入聊天室"
-						//re,_:=json.Marshal(client)
+						re,_:=json.Marshal(client)
 						v.Conn.WriteMessage(1,re)
 						return true
 					})
-					//for _,v:=range onLineMap{
-					//	client.Msg.Message ="进入聊天室"
-					//	re,_:=json.Marshal(client)
-					//	v.Conn.WriteMessage(1,re)
-					//}
-				} else if client.Msg.MsgType == BroadcastMessage{
 
+				} else if client.Msg.MsgType == BroadcastMessage{
+					re,_:=json.Marshal(client)
 					onLineMapSafe.Range(func(k, value interface{}) bool {
 						v := value.(*Client)
 						if v !=client {
@@ -59,14 +54,8 @@ func init(){
 						return true
 					})
 
-					//for _,v:=range onLineMap{
-					//	re,_:=json.Marshal(client)
-					//	if v != client {
-					//		v.Conn.WriteMessage(1,re)
-					//	}
-					//}
 				} else if client.Msg.MsgType == DisconnectedMessage{
-
+					re,_:=json.Marshal(client)
 					onLineMapSafe.Range(func(k, value interface{}) bool {
 						v := value.(*Client)
 						if v !=client {
@@ -75,22 +64,24 @@ func init(){
 						return true
 					})
 					onLineMapSafe.Delete(client.Addr)
-					//for _,v:=range onLineMap{
-					//	if v != client {
-					//		v.Conn.WriteMessage(1,re)
-					//	}
-					//}
-					//关闭连接
-					//client.Conn.Close()
-					//var wg sync.WaitGroup
-					//wg.Add(1)
-					////删除map中的数据
-					//
-					//wg.Done()
+
+				} else if client.Msg.MsgType == HeartBeatMessage{
+
+					onLineMapSafe.Range(func(k, value interface{}) bool {
+						v := value.(*Client)
+						if v != client {
+							v.Msg.Message=client.Name+"用户退出!"
+							re,_:=json.Marshal(v)
+							v.Conn.WriteMessage(1,re)
+						} else {
+							re,_:=json.Marshal(client)
+							v.Conn.WriteMessage(1,re)
+						}
+						return true
+					})
+					onLineMapSafe.Delete(client.Addr)
 				}
-			//case <-time.After(10*time.Second):
-			//	//主动断开
-			//	fmt.Println("主动断开")
+
 			}
 		}
 	}()
@@ -109,11 +100,13 @@ var upGrader = websocket.Upgrader{
 var onLineMap = make(map[string]*Client)
 
 //并发安全的map
-
 var onLineMapSafe sync.Map
 
 //定义全局的消息推送channel
 var SendMsgChannel = make(chan *Client)
+
+//维持心跳
+var isOnline = make(chan bool)
 
 //定义用户结构体
 type Client struct {
@@ -158,44 +151,41 @@ func (UserController)Ws(c *gin.Context){
 	}
 	//添加到map中
 	onLineMapSafe.Store(remoteAddr,user)
-	SendMsgChannel<-user
 	//通知其他用户上线消息
-	//onLineMap[remoteAddr].Msg = message{MsgType: ConnectedMessage}
-	//SendMsgChannel<-onLineMap[remoteAddr]
+	SendMsgChannel<-user
+
 	for {
 		_,p,err:=ws.ReadMessage()
-
 		value,_:=onLineMapSafe.Load(remoteAddr)
 		v :=value.(*Client)
-
-
 		//用户退出
 		if err != nil {
 			fmt.Println("用户退出!")
-
-			//value,_:=onLineMapSafe.Load(remoteAddr)
-			//v :=value.(*Client)
 			v.Msg = message{MsgType: DisconnectedMessage}
-
 			SendMsgChannel<-v
-
-			//onLineMap[remoteAddr].Msg = message{MsgType: DisconnectedMessage}
-			//SendMsgChannel<-onLineMap[remoteAddr]
 			return
 		}
-
 		//群发用户发送的信息
 		v.Msg =message{MsgType: BroadcastMessage,Message:string(p)}
-
-		//onLineMap[remoteAddr].Msg = message{MsgType: BroadcastMessage,Message:string(p)}
 		SendMsgChannel<-v
 		if err != nil {
 			fmt.Println("socket写入失败:",err)
 			break
 		}
 
-
 	}
+
+
+	//for{
+	//	select {
+	//		case <-isOnline:
+	//	case <-time.After(10*time.Second):
+	//		//用户离线,
+	//		user.Msg = message{MsgType: DisconnectedMessage,Message: "已断开连接.."}
+	//		SendMsgChannel<-user
+	//		return
+	//	}
+	//}
 
 }
 
@@ -204,17 +194,11 @@ func (UserController)Ws(c *gin.Context){
 func  (UserController)GetOnlineUser(c *gin.Context){
 	c.Header("Access-Control-Allow-Origin", "*")
 	var onLineSlice []*Client
-
 	onLineMapSafe.Range(func(k, value interface{}) bool {
 		v := value.(*Client)
 		onLineSlice = append(onLineSlice,v)
 		return true
 	})
-
-	//for _,v := range onLineMap{
-	//	onLineSlice = append(onLineSlice,v)
-	//}
-
 	if len(onLineSlice) ==0 {
 		c.JSON(200, []struct {
 		}{})
