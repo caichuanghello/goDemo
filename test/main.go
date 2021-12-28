@@ -185,16 +185,26 @@ func main01() {
 
 func main(){
 
-	lis,_:=net.Listen("tcp",":8888")
-	defer lis.Close()
+	r,err:= FileOrDirIsExit("log.txt")
 
-	for {
-		con,err:=lis.Accept()
-		if err != nil {
-			panic("Accept() err=  " +  err.Error())
-		}
-		go handleFunc(con)
+	if err != nil{
+		fmt.Println("FileOrDirIsExit error:",err)
+		return
 	}
+
+	fmt.Println("log.txt 存在:",r)
+	//return
+	//
+	//lis,_:=net.Listen("tcp",":8888")
+	//defer lis.Close()
+	//
+	//for {
+	//	con,err:=lis.Accept()
+	//	if err != nil {
+	//		panic("Accept() err=  " +  err.Error())
+	//	}
+	//	go handleFunc(con)
+	//}
 
 }
 
@@ -216,3 +226,4 @@ func handleFunc(con net.Conn){
 	return
 
 }
+
