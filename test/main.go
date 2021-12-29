@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
+	"net/http"
 	"strings"
 )
 
@@ -182,17 +184,35 @@ func main01() {
 		go accept_request_thread(conn)
 	}
 }
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+func RandomString() string {
+	b := make([]byte, rand.Intn(10)+10)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
 func main(){
 
-	r,err:= FileOrDirIsExit("log.txt")
 
-	if err != nil{
-		fmt.Println("FileOrDirIsExit error:",err)
-		return
-	}
 
-	fmt.Println("log.txt 存在:",r)
+
+	//var (
+	//	name    string
+	//	age     int
+	//)
+	//fmt.Println("请输入名称:")
+	//fmt.Scan(&name)
+	//fmt.Println("请输入年龄:")
+	//fmt.Scan(&age)
+	//
+	//fmt.Printf("扫描结果 name:%s age:%d \n", name, age)
+
+
+
+
+
 	//return
 	//
 	//lis,_:=net.Listen("tcp",":8888")
@@ -207,6 +227,9 @@ func main(){
 	//}
 
 }
+
+
+
 
 func handleFunc(con net.Conn){
 
