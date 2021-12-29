@@ -1,8 +1,16 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+)
 
+
+type user struct {
+	Name string
+	Age int
+}
 func main(){
+
 
 	http.HandleFunc("/",hello)
 	http.ListenAndServe(":8080",nil)

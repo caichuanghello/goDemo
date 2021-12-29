@@ -111,7 +111,7 @@ func getNovel(){
 	}
 	c:=colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36"),
-		colly.MaxDepth(3),//这里表示采集10章
+		colly.MaxDepth(3),//这里表示采集3章
 	)
 
 	//获取第一章的url
@@ -123,9 +123,7 @@ func getNovel(){
 			fmt.Println("连接不存在")
 		}
 	})
-
 	c.Visit(url)
-
 }
 
 //获取小说的标题
@@ -135,14 +133,11 @@ func getTitle(url string)(title string){
 		colly.MaxDepth(1),
 		colly.Debugger(&debug.LogDebugger{}),
 	)
-	
 	c.OnHTML("div[id='info']", func(element *colly.HTMLElement) {
 		//title =element.DOM.ChildrenFiltered("h1").Text()
-		//title =element.DOM.Children().Filter("h1").Text() //chidren是后代.find是子后代
+		//title =element.DOM.Children().Filter("h1").Text() //Children是后代.find是子后代
 		title = element.DOM.Find("h1").Text()
-
 	})
-
 	c.Visit(url)
 	return
 }
@@ -157,23 +152,15 @@ func getContext(url string,file *os.File,c *colly.Collector){
 		if n != -1 {
 			title = "    "+string([]byte(title)[n:])+"\r\n\r\n"
 			//获取主体内容
-			content :=element.DOM.Find("div[id='content']").Text()+"\r\n\r\n\r\n"
+			content :=element.DOM.Find("div[id='content']").BeforeSelection(element.DOM.Children().Find("p")).Text()+"\r\n\r\n\r\n" //过滤掉内容中的p标签包裹的内容
 			file.Write([]byte(title))
 			file.Write([]byte(content))
-		}
-	})
-
-	//获取下一章内容,然后重复执行
-	c.OnHTML("div[class='bottem2']", func(element *colly.HTMLElement) {
-		href, found:=element.DOM.Find("a").Eq(3).Attr("href")
-		if found {
-			err:=element.Request.Visit(element.Request.AbsoluteURL(href)) //这里会拼接得到的重写去调用上面的OnHTML.然后解析页面
-			if err !=nil {
-				fmt.Println("下一页爬取失败:",err.Error())
-				return
+			//获取下一个url
+			href, found:=element.DOM.Find("div[class='bottem2']").Find("a").Eq(3).Attr("href")
+			if found{
+				element.Request.Visit(element.Request.AbsoluteURL(href)) //然后请求下一个url,会自动触发c.OnHTML()
 			}
 		}
 	})
-
 	c.Visit(url)
 }
