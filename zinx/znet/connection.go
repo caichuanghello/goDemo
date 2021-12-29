@@ -14,6 +14,8 @@ type Connection struct {
 
 	//告知当前连接已近退出/停止 channel
 	ExitChan chan bool
+
+	Router ziface.IRouter
 }
 
 func NewConnection(conn net.Conn,connID uint32, callback ziface.HandleFunc) *Connection {
@@ -44,10 +46,16 @@ func (c *Connection)StartReader(){
 			continue
 		}
 
-		if err:=c.handlAPI(c.Conn,res,n); err !=nil {
-			fmt.Println("ConnID",c.ConnID,"handle is error",err)
-			break
+		//从路由中找到注册绑定的con对应的router调用
+		req :=Request{
+			conn: c,
+			data: res,
 		}
+		go func(request ziface.IRequest) {
+			c.Router.PreHandle(request)
+			c.Router.Handle(request)
+			c.Router.PostHandle(request)
+		}(&req)
 
 	}
 }

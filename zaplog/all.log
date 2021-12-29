@@ -1,0 +1,10 @@
+2021-12-29 22:31:07.985	info	DefaultLogger init success
+2021-12-29 22:31:08.016	info	test log	{"line": 47, "k1": "v1"}
+2021-12-29 22:31:08.016	debug	debug log	{"level": "{\"name\":\"zhangsan\",\"age\":21}"}
+2021-12-29 22:31:08.016	info	Info log	{"level": "{\"a\":\"4\",\"b\":\"5\"}"}
+2021-12-29 22:31:08.016	warn	Info log	{"level": "{\"a\":\"7\",\"b\":\"8\"}"}
+2021-12-29 22:32:21.592	info	DefaultLogger init success
+2021-12-29 22:32:21.623	info	test log	{"line": 47, "k1": "v1"}
+2021-12-29 22:32:21.623	debug	debug log	{"level": "{\"name\":\"zhangsan\",\"age\":21}"}
+2021-12-29 22:32:21.623	info	Info log	{"level": "{'a':4,'b':5}"}
+2021-12-29 22:32:21.623	warn	Info log	{"level": "{'a':7,'b':8}"}

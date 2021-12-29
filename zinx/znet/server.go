@@ -13,6 +13,7 @@ type Server struct {
 	IPVersion string
 	IP string
 	Port int
+	Router ziface.IRouter
 }
 //这边目前写死,以后优化可以由
 func CallBackToClient(conn net.Conn,data []byte,cnt int) error{
@@ -60,14 +61,7 @@ func handleFunc(con net.Conn){
 	go delconn.Start()
 
 	//for {
-	//	res :=make([]byte,512)
-	//	n,err:=con.Read(res)
-	//	if err !=nil {
-	//		fmt.Println("recv buf err",err)
-	//		continue
-	//	}
-	//	con.Write(res[:n])
-	//}
+
 
 
 }
