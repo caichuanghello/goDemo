@@ -60,7 +60,7 @@ func main(){
 		fmt.Println("marshal is failed,err:",err)
 	}
 	// 历史记录日志名字为：all-2018-11-15T07-45-51.763.log，服务重新启动，日志会追加，不会删除
-	logger := initLogger("./all.log","debug")
+	logger := initLogger("./log/all.log","debug")
 	logger.Info(fmt.Sprint("test log"),zap.Int("line",47),zap.String("k1","v1"))
 	logger.Debug(fmt.Sprint("debug log"),zap.ByteString("level",data))
 	logger.Info(fmt.Sprint("Info log"),zap.String("level",`{'a':4,'b':5}`))

@@ -6,8 +6,8 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"net/http"
 	"strings"
+	"time"
 )
 
 func unimplemented(conn net.Conn){
@@ -196,8 +196,8 @@ func RandomString() string {
 func main(){
 
 
-
-
+	t:=time.Now().Format()
+	fmt.Printf("%v",t)
 	//var (
 	//	name    string
 	//	age     int
