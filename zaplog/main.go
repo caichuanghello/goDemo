@@ -8,10 +8,12 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const loglevel = "debug"
 func initLogger (logpath string,loglevel string) *zap.Logger {
+
 	hook := lumberjack.Logger{
 		Filename:   logpath,  //日志文件路径
-		MaxSize:    128, //最大字节
+		MaxSize:    128, //最大字节单位是M
 		MaxAge:     30,
 		MaxBackups: 7,
 		Compress:   true,

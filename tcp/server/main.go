@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
 )
 
 func main(){
@@ -28,7 +27,7 @@ func main(){
 		}
 		reader:=bufio.NewReader(con) //创建一个具有默认大小缓冲、从conn中读取的*reader。
 		for{
-			peek,err:=reader.Peek(4)//读取长度
+			peek,err:=reader.Peek(4)//读取长度,且指针不移动,主要是为了如果本次没有接收完成,下一次用到重新读取长度
 
 			if err != nil {
 				if err != io.EOF {
@@ -45,7 +44,8 @@ func main(){
 			}
 			//表示还没有接收完成,继续接收
 			if int32(reader.Buffered()) < length + 4 {
-				continue
+				fmt.Println("服务端获取数据进行了等待")
+				continue //这里continue是因为reader会不断的从socket缓冲区中接收数据,这一次没有读取完整,下一次说不定数据就在里面了
 			}
 
 			data := make([]byte, length + 4)
@@ -54,7 +54,6 @@ func main(){
 				continue
 			}
 			fmt.Println("received msg:", string(data[4:]))
-			time.Sleep(time.Second)
 		}
 	}
 

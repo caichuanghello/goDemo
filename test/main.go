@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
+	"os"
+	"strconv"
 	"strings"
-	"time"
 )
 
 func unimplemented(conn net.Conn){
@@ -196,8 +198,78 @@ func RandomString() string {
 func main(){
 
 
-	t:=time.Now().Format()
-	fmt.Printf("%v",t)
+	file,err:=os.OpenFile("D:\\vue\\vue学习第二天.flv",os.O_CREATE|os.O_WRONLY|os.O_APPEND,0666)
+	defer file.Close()
+	if err !=nil{
+		fmt.Println("文件打开失败")
+	}
+	for i:=1;i<10;i++{
+		filename := "D:\\vue\\"+strconv.Itoa(i)+".flv"
+		file1,err:= os.Open(filename)
+		if err !=nil{
+			fmt.Println(filename,"not found")
+			break
+		}
+		res,err:=ioutil.ReadAll(file1)
+		n,err:=file.Write(res)
+
+		if err != nil {
+			fmt.Println(filename,"合并失败")
+			break
+		}
+		fmt.Println(filename,"success:",n)
+		file1.Close()
+	}
+
+	fmt.Println("合并完成")
+
+
+
+	//file,_:=os.Open("log.txt")
+	//
+	//reader:=bufio.NewReader(file)
+	//
+	//rem,_:=reader.ReadBytes(',')
+	//
+	//fmt.Println(string(rem))
+
+
+	/*
+	//获取当前时间
+	tim := time.Now().Format("2006-01-02 15:04:05")
+	fmt.Println("当前时间:",tim)
+
+
+	//当前时间戳(秒)
+	timestamp:=time.Now().Unix()
+	fmt.Println("时间戳:",timestamp)
+
+	//把一个时间戳类型转化成时间格式
+	times := int64(1555555555)
+	timesString:=time.Unix(times,0).Format("2006-01-02 15:04:05")
+	fmt.Println("时间戳为",times,"的日期为:",timesString)
+
+	//把时间格式的字符串转化成时间戳
+	tims :="2019-04-18 10:45:55"
+	loc,_:=time.LoadLocation("Asia/Shanghai")
+	ti,_:=time.ParseInLocation("2006-01-02 15:04:05",tims,loc)
+	tis:=ti.Unix()
+	fmt.Println(tims,"对应的是时间戳是:",tis)
+
+	//比较两个时间
+	t1:=time.Now()
+	t2,_:= time.Parse("2006-01-02 15:04:05","2022-02-03 15:12:11")
+	fmt.Println("t1是否在t2之后:",t1.After(t2))
+	fmt.Println("t1是否在t2之前:",t1.Before(t2))
+	fmt.Println("t1与t2的间隔:",int((t2.Sub(t1)).Seconds()))
+
+	//日期相加
+	fmt.Println("后天是:",time.Now().AddDate(0,0,2).Format("2006-01-02 15:04:05"))
+
+	fmt.Println("过24小时一分钟之后秒是:",time.Now().Add(time.Second*60+time.Hour*24).Format("2006-01-02 15:04:05"))
+
+	 */
+
 	//var (
 	//	name    string
 	//	age     int
@@ -249,4 +321,6 @@ func handleFunc(con net.Conn){
 	return
 
 }
+
+
 

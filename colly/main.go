@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	"github.com/axgle/mahonia"
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/debug"
 	"os"
@@ -14,8 +16,40 @@ import (
 
 func main(){
 
-	getNovel()
+	//getNovel() //笔趣阁小说下载
 	//getTop250() //爬取豆瓣电影top250
+
+	//getVideoList()
+
+	fmt.Println("没运行吗")
+
+	url:="https://upos-sz-mirrorcoso1.bilivideo.com/upgcxcode/52/92/260129252/260129252-1-30033.m4s?e=ig8euxZM2rNcNbdlhoNvNC8BqJIzNbfqXBvEqxTEto8BTrNvN0GvT90W5JZMkX_YN0MvXg8gNEV4NC8xNEV4N03eN0B5tZlqNxTEto8BTrNvNeZVuJ10Kj_g2UB02J0mN0B5tZlqNCNEto8BTrNvNC7MTX502C8f2jmMQJ6mqF2fka1mqx6gqj0eN0B599M=&uipk=5&nbs=1&deadline=1641283387&gen=playurlv2&os=coso1bv&oi=1941969994&trid=beaa4b83939b4c1eb757e728f3cd4d9au&platform=pc&upsig=6dfa7c1e5fb928dbfadc576f88615206&uparams=e,uipk,nbs,deadline,gen,os,oi,trid,platform&mid=0&bvc=vod&nettype=0&orderid=0,3&agrr=1&bw=20560&logo=80000000"
+	c :=colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36"),
+	)
+	c.OnResponse(func(r *colly.Response) {
+		fmt.Println("绝了")
+		//r.Headers.Set("content-Type","application/json; charset=utf-8")
+		file,err:=os.OpenFile("1.mp4",os.O_CREATE|os.O_WRONLY,0666)
+		if err != nil {
+			fmt.Println("OpenFile error :",err.Error())
+			return
+		}
+		n,err:=file.Write(r.Body)
+		if err != nil {
+			fmt.Println("视频数据采集错误!")
+			return
+		}
+		fmt.Println("文件写入:",n)
+
+	})
+
+	err:=c.Visit(url)
+
+	if err != nil {
+		fmt.Println("visti error :",err.Error())
+	}
+
 }
 
 
@@ -163,4 +197,99 @@ func getContext(url string,file *os.File,c *colly.Collector){
 		}
 	})
 	c.Visit(url)
+}
+
+
+
+//下载bilibili视频
+func getVideoList(){
+	//baseurl := "https://www.bilibili.com/video/"
+	videoId := "BV1ME411Y71o"
+	//url :=baseurl + videoId
+	//获取视频列表
+	mapList :=make(map[string]interface{})
+	c :=colly.NewCollector(
+		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36"),
+	)
+
+	//因为是动态渲染的,所以需要去获取真正的数据返回
+	apiUrl :="https://api.bilibili.com/x/player/pagelist?bvid="+videoId+"&jsonp=jsonp"
+
+	c.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("refer","https://www.bilibili.com/video/BV1ME411Y71o")
+		r.Headers.Set("accept-encoding","identity")
+		r.Headers.Set("origin","https://www.bilibili.com")
+		r.Headers.Set("range","bytes=1040-4563")
+	})
+
+	c.OnResponse(func(r *colly.Response) {
+		//r.Headers.Set("content-Type","application/json; charset=utf-8")
+		var item  PageResult
+		err := json.Unmarshal(r.Body, &item)
+		if err !=nil {
+			fmt.Println("构建结构体失败:",err.Error())
+			return
+		}
+		for _,v := range item.Data {
+			mapList[v.Part] = v.Cid
+		}
+		fmt.Println("构建结构体成功:",mapList)
+	})
+
+
+
+
+	//c.OnHTML("div[id='multi_page']", func(element *colly.HTMLElement) {
+	//	fmt.Println(element.DOM.Html())
+	//
+	//	//element.ForEach("li", func(i int, item *colly.HTMLElement) {
+	//	//	fmt.Println(item.DOM.Html())
+	//	//	//获取名称
+	//	//	name,_ := item.DOM.Find("a").Attr("href")
+	//	//	//获取连接
+	//	//	url := item.DOM.Find("a").Text()
+	//	//
+	//	//	fmt.Printf("%s:%s",name,url)
+	//	//
+	//	//})
+	//})
+
+
+
+	c.Visit(apiUrl)
+
+}
+
+func ConvertToString(src string, srcCode string, tagCode string) string {
+
+	srcCoder := mahonia.NewDecoder(srcCode)
+
+	srcResult := srcCoder.ConvertString(src)
+
+	tagCoder := mahonia.NewDecoder(tagCode)
+
+	_, cdata, _ := tagCoder.Translate([]byte(srcResult), true)
+
+	result := string(cdata)
+
+	return result
+
+}
+
+type PageResult struct {
+	Code int
+	Message string
+	ttl int
+	Data []VideoInfo
+}
+
+type VideoInfo struct {
+	Cid int
+	Page int
+	From string
+	Part string
+	Duration int
+	Vid string
+	Weblink string
+	Dimension interface{}
 }
