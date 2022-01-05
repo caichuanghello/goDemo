@@ -10,3 +10,4 @@
 * chat_room2 : 图形化聊天室,仅支持群聊
 * sendFile : 客户端上传文件
 * tcp : tcp粘包问题解决示例
+* video_join : 利用ffmpeg合并多个视频

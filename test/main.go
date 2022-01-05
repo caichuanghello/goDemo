@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
 	"os"
-	"strconv"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 
 func unimplemented(conn net.Conn){
@@ -195,109 +200,124 @@ func RandomString() string {
 	}
 	return string(b)
 }
+
+var wg sync.WaitGroup
+
+
+//
 func main(){
 
+	start := time.Now()
+	var inputDir string
+	var outputName string
+	flag.StringVar(&inputDir, "i", "./dvr-file/flv", "input file dir")
+	flag.StringVar(&outputName, "o", "out.mp4", "output file name")
+	//解析命令行参数
+	flag.Parse()
 
-	file,err:=os.OpenFile("D:\\vue\\vue学习第二天.flv",os.O_CREATE|os.O_WRONLY|os.O_APPEND,0666)
-	defer file.Close()
-	if err !=nil{
-		fmt.Println("文件打开失败")
+	exist, err := pathExists(inputDir)
+	if err != nil {
+		fmt.Printf("get dir error!: %v", err)
+		return
 	}
-	for i:=1;i<10;i++{
-		filename := "D:\\vue\\"+strconv.Itoa(i)+".flv"
-		file1,err:= os.Open(filename)
-		if err !=nil{
-			fmt.Println(filename,"not found")
-			break
-		}
-		res,err:=ioutil.ReadAll(file1)
-		n,err:=file.Write(res)
-
-		if err != nil {
-			fmt.Println(filename,"合并失败")
-			break
-		}
-		fmt.Println(filename,"success:",n)
-		file1.Close()
+	if !exist {
+		inputDir = os.Args[0]
+	}
+	inputDir, _  = filepath.Abs(inputDir)
+	fmt.Println("argv: ", inputDir, outputName)
+	if err = flvs2mp4(inputDir, outputName); err != nil {
+		fmt.Printf("flv to mp4 error!: %v", err)
 	}
 
-	fmt.Println("合并完成")
+	elapsed := time.Since(start)
+	fmt.Println("Running time:", elapsed)
+}
 
+// 判断文件或目录是否存在
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
 
+// 命令行调用
+func Cmd(commandName string, params []string) (string, error) {
+	cmd := exec.Command(commandName, params...)
+	//fmt.Println("Cmd", cmd.Args)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	err := cmd.Start()
+	if err != nil {
+		return "", err
+	}
+	err = cmd.Wait()
+	return out.String(), err
+}
 
-	//file,_:=os.Open("log.txt")
-	//
-	//reader:=bufio.NewReader(file)
-	//
-	//rem,_:=reader.ReadBytes(',')
-	//
-	//fmt.Println(string(rem))
+// 视频格式转换
+func videoConvert(in string, out string) {
+	defer wg.Done()
+	//fmt.Println(in, out)
+	cmdStr := fmt.Sprintf("ffmpeg -i %s -loglevel quiet -c copy -bsf:v h264_mp4toannexb -f mpegts %s", in, out)
+	args := strings.Split(cmdStr, " ")
+	msg, err := Cmd(args[0], args[1:])
+	if err != nil {
+		fmt.Printf("videoConvert failed, %v, output: %v\n", err, msg)
+		return
+	}
+}
 
+// 视频合成
+func videoMerge(in []string, out string) {
+	//fmt.Println(in, out)
+	cmdStr := fmt.Sprintf("ffmpeg -i concat:%s -loglevel quiet -c copy -absf aac_adtstoasc -movflags faststart %s",
+		strings.Join(in, "|"), out)
+	args := strings.Split(cmdStr, " ")
+	msg, err := Cmd(args[0], args[1:])
+	if err != nil {
+		fmt.Printf("videoMerge failed, %v, output: %v\n", err, msg)
+		return
+	}
+}
 
-	/*
-	//获取当前时间
-	tim := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Println("当前时间:",tim)
+func flvs2mp4(inDir string, outFile string)(err error) {
+	tsFileDir := filepath.Join(inDir, "tsfile")
+	if err = os.RemoveAll(tsFileDir); err != nil {
+		return
+	}
+	if err = os.RemoveAll(outFile); err != nil {
+		return
+	}
+	if err = os.Mkdir(tsFileDir,0666); err!=nil {
+		return
+	}
 
+	infiles, _ := ioutil.ReadDir(inDir)
+	for _, f := range infiles {
+		if filepath.Ext(f.Name()) == ".flv" {
+			tsfileName := filepath.Join(tsFileDir, strings.TrimSuffix(f.Name(), ".flv") + ".ts")
+			wg.Add(1)
+			go videoConvert(filepath.Join(inDir, f.Name()), tsfileName)
+		}
+	}
+	wg.Wait()
 
-	//当前时间戳(秒)
-	timestamp:=time.Now().Unix()
-	fmt.Println("时间戳:",timestamp)
+	tsfiles, _ := ioutil.ReadDir(tsFileDir)
+	tsfileNames := make([]string, 0, len(tsfiles))
+	for _, f := range tsfiles {
+		if filepath.Ext(f.Name()) == ".ts" {
+			tsfileNames = append(tsfileNames, filepath.Join(tsFileDir, f.Name()))
+		}
+	}
+	videoMerge(tsfileNames, outFile)
 
-	//把一个时间戳类型转化成时间格式
-	times := int64(1555555555)
-	timesString:=time.Unix(times,0).Format("2006-01-02 15:04:05")
-	fmt.Println("时间戳为",times,"的日期为:",timesString)
-
-	//把时间格式的字符串转化成时间戳
-	tims :="2019-04-18 10:45:55"
-	loc,_:=time.LoadLocation("Asia/Shanghai")
-	ti,_:=time.ParseInLocation("2006-01-02 15:04:05",tims,loc)
-	tis:=ti.Unix()
-	fmt.Println(tims,"对应的是时间戳是:",tis)
-
-	//比较两个时间
-	t1:=time.Now()
-	t2,_:= time.Parse("2006-01-02 15:04:05","2022-02-03 15:12:11")
-	fmt.Println("t1是否在t2之后:",t1.After(t2))
-	fmt.Println("t1是否在t2之前:",t1.Before(t2))
-	fmt.Println("t1与t2的间隔:",int((t2.Sub(t1)).Seconds()))
-
-	//日期相加
-	fmt.Println("后天是:",time.Now().AddDate(0,0,2).Format("2006-01-02 15:04:05"))
-
-	fmt.Println("过24小时一分钟之后秒是:",time.Now().Add(time.Second*60+time.Hour*24).Format("2006-01-02 15:04:05"))
-
-	 */
-
-	//var (
-	//	name    string
-	//	age     int
-	//)
-	//fmt.Println("请输入名称:")
-	//fmt.Scan(&name)
-	//fmt.Println("请输入年龄:")
-	//fmt.Scan(&age)
-	//
-	//fmt.Printf("扫描结果 name:%s age:%d \n", name, age)
-
-
-
-
-
-	//return
-	//
-	//lis,_:=net.Listen("tcp",":8888")
-	//defer lis.Close()
-	//
-	//for {
-	//	con,err:=lis.Accept()
-	//	if err != nil {
-	//		panic("Accept() err=  " +  err.Error())
-	//	}
-	//	go handleFunc(con)
-	//}
-
+	return
 }
 
 
