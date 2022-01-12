@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
-	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -198,12 +199,66 @@ func RandomString() string {
 var wg sync.WaitGroup
 
 
-//
+//\
+
+var stuff  = "" //用来打印的前缀
+var count = 0
 func main(){
 
-	fiel,_:= os.OpenFile("log.txt",os.O_RDONLY,0666)
+	path :="D:\\chrom插件"
+	//pathFile(path,stuff)
+	listAll(path,0)
+}
 
-	fiel.wr
+func listAll(path string, curHier int){
+	fileInfos, err := ioutil.ReadDir(path)
+	if err != nil{fmt.Println(err); return}
+
+	for _, info := range fileInfos{
+		if info.IsDir(){
+			for tmpHier := curHier; tmpHier > 0; tmpHier--{
+				fmt.Printf("|\t")
+			}
+			fmt.Println(info.Name(),"\\")
+			listAll(path + "/" + info.Name(),curHier + 1)
+		}else{
+			for tmpHier := curHier; tmpHier > 0; tmpHier--{
+				fmt.Printf("|\t")
+			}
+			fmt.Println(info.Name())
+		}
+	}
+}
+//打印目录结构体
+/*
+Adblock\
+  Infinity-最佳新标签页增强插件.crx
+  adblock-plus-free-ad-bloc.crx
+  cfhdojbkjhnklbpkdaibdccddilifddb.zip
+  how-to-install.html
+  安装说明.html
+Axure RP\
+  axure-rp-extension-for-ch.crx
+ */
+
+func pathFile(path string,stuff string){
+	if count != 0 {
+		stuff +="  "
+	}
+	count++
+	files,err:=ioutil.ReadDir(path)
+	if err != nil {
+		fmt.Println("打开目录失败:",err.Error())
+		return
+	}
+	for _,v:=range files{
+		if v.IsDir() {
+			fmt.Println(stuff+v.Name()+"\\")
+			pathFile(filepath.Join(path,v.Name()),stuff)
+		} else {
+			fmt.Println(stuff+v.Name())
+		}
+	}
 }
 
 

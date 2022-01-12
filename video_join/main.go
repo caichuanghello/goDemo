@@ -15,6 +15,8 @@ import (
 var wg sync.WaitGroup
 func main(){
 
+
+
 	start := time.Now()
 	var inputDir string
 	var outputName string
